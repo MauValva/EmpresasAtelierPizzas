@@ -1,0 +1,5 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getAccessState } from "@/lib/auth/access";
+import { createClient } from "@/lib/supabase/server";
+import { refundSchema } from "@/lib/finance/schema";
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); const { id } = await params; const parsed = refundSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Confira os dados do estorno." }, { status: 400 }); const v = parsed.data; const supabase = await createClient(); const { data, error } = await supabase.rpc("register_sale_refund", { p_sale_id: id, p_payment_id: v.payment_id, p_amount: v.amount, p_reason: v.reason, p_operation_key: v.operation_key ?? crypto.randomUUID() }); if (error) return NextResponse.json({ error: "Não foi possível registrar o estorno." }, { status: 400 }); return NextResponse.json({ data }, { status: 201 }); }

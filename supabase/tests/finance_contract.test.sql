@@ -1,0 +1,14 @@
+begin;
+select plan(10);
+select has_table('public', 'sale_refunds', 'sale refunds table exists');
+select has_table('public', 'expense_recurrences', 'expense recurrences table exists');
+select has_table('public', 'expenses', 'expenses table exists');
+select has_table('public', 'expense_payments', 'expense payments table exists');
+select has_function('public', 'register_sale_payment', array['uuid','numeric','text','text','uuid'], 'sale payment function exists');
+select has_function('public', 'register_sale_refund', array['uuid','uuid','numeric','text','uuid'], 'sale refund function exists');
+select has_function('public', 'create_expense', array['uuid','text','text','numeric','date','date','date','text','jsonb','boolean','uuid'], 'expense function exists');
+select has_function('public', 'register_expense_payment', array['uuid','numeric','text','text','uuid'], 'expense payment function exists');
+select has_function('public', 'generate_recurring_expense', array['uuid','date'], 'recurrence function exists');
+select has_column('public', 'expenses', 'allocation_snapshot', 'allocation snapshot exists');
+select * from finish();
+rollback;

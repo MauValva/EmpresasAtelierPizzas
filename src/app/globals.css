@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --background: 218 28% 9%; --surface: 215 25% 15%; --elevated: 214 23% 21%; --border: 215 18% 26%; --foreground: 216 33% 96%; --muted: 215 14% 68%; --accent: 32 55% 63%; --success: 143 42% 62%; --warning: 39 69% 66%; --danger: 357 63% 70%; --info: 205 51% 68%; }
+* { box-sizing: border-box; }
+html { background: hsl(var(--background)); }
+body { margin: 0; background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: Arial, Helvetica, sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+@layer components { .field { @apply mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-60; } .label-text { @apply block text-sm font-medium text-foreground; } .metric { @apply rounded-2xl border border-border bg-surface p-4; } .metric span { @apply block text-xs text-muted; } .metric strong { @apply mt-2 block text-2xl font-semibold text-foreground; } }

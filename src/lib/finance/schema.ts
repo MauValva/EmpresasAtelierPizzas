@@ -1,0 +1,7 @@
+import { z } from "zod";
+
+const optionalText = (max: number) => z.string().trim().max(max).optional().nullable();
+export const paymentSchema = z.object({ amount: z.coerce.number().positive(), payment_method: z.enum(["pix", "cash", "card", "other"]), notes: optionalText(300), operation_key: z.string().uuid().optional() });
+export const refundSchema = z.object({ payment_id: z.string().uuid(), amount: z.coerce.number().positive(), reason: z.string().trim().min(3).max(300), operation_key: z.string().uuid().optional() });
+export const expenseSchema = z.object({ company_id: z.string().uuid().nullable().optional(), description: z.string().trim().min(2).max(180), category: z.string().trim().min(2).max(80), amount: z.coerce.number().positive(), expense_date: z.string(), competence_date: z.string(), due_date: z.string().nullable().optional(), notes: optionalText(500), allocation_snapshot: z.record(z.string(), z.number().nonnegative()).default({}), is_recurring: z.boolean().default(false), recurrence_id: z.string().uuid().nullable().optional() });
+export const recurrenceSchema = z.object({ company_id: z.string().uuid().nullable().optional(), description: z.string().trim().min(2).max(180), category: z.string().trim().min(2).max(80), amount: z.coerce.number().positive(), day_of_month: z.coerce.number().int().min(1).max(31), starts_on: z.string(), ends_on: z.string().nullable().optional(), notes: optionalText(500) });
