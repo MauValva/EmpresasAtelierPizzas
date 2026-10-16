@@ -1,5 +1,0 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAccessState } from "@/lib/auth/access";
-import { createClient } from "@/lib/supabase/server";
-import { paymentSchema } from "@/lib/finance/schema";
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); const { id } = await params; const parsed = paymentSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Confira os dados do pagamento." }, { status: 400 }); const v = parsed.data; const supabase = await createClient(); const { data, error } = await supabase.rpc("register_expense_payment", { p_expense_id: id, p_amount: v.amount, p_payment_method: v.payment_method, p_notes: v.notes ?? null, p_operation_key: v.operation_key ?? crypto.randomUUID() }); if (error) return NextResponse.json({ error: "Não foi possível registrar o pagamento." }, { status: 400 }); return NextResponse.json({ data }, { status: 201 }); }

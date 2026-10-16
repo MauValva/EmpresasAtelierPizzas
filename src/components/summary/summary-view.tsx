@@ -1,0 +1,29 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { ArrowUpRight, CircleDollarSign, Plus, ShoppingCart } from "lucide-react";
+import { ExpenseDialog } from "@/components/finance/expense-dialog";
+import { SaleDialog } from "@/components/sales/sale-dialog";
+import { Button } from "@/components/ui/button";
+import { SummaryProfitIndicator } from "@/components/summary/summary-profit-indicator";
+import { announceFinancialChange, COMPANY_CHANGE_EVENT, readSelectedCompanyId, SUMMARY_PERIOD_EVENT } from "@/lib/company-selection";
+
+type Summary = { revenue: number; cogs: number; operating_expenses: number; profit: number; start: string; end: string };
+type DashboardPayload = { month: { start: string; end: string }; week: { start: string; end: string }; summary: Summary; weeklySummary: Summary };
+const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const money = (value: number | null | undefined) => `R$ ${Number(value ?? 0).toFixed(2).replace(".", ",")}`;
+const dateLabel = (value: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" }).format(new Date(`${value}T12:00:00-03:00`));
+
+function SummaryContent() {
+  const today = useMemo(() => new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "numeric" }).formatToParts(new Date()), []); const currentYear = Number(today.find((part) => part.type === "year")?.value); const currentMonth = Number(today.find((part) => part.type === "month")?.value);
+  const [month, setMonth] = useState(currentMonth); const [year, setYear] = useState(currentYear); const [companyId, setCompanyId] = useState(""); const [data, setData] = useState<DashboardPayload | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  useEffect(() => { setCompanyId(readSelectedCompanyId()); const onCompanyChange = (event: Event) => setCompanyId((event as CustomEvent<string>).detail ?? ""); window.addEventListener(COMPANY_CHANGE_EVENT, onCompanyChange); return () => window.removeEventListener(COMPANY_CHANGE_EVENT, onCompanyChange); }, []);
+  useEffect(() => { window.dispatchEvent(new CustomEvent(SUMMARY_PERIOD_EVENT, { detail: { month, year } })); }, [month, year]);
+  useEffect(() => { let active = true; setLoading(true); setError(null); const query = new URLSearchParams({ month: String(month), year: String(year) }); if (companyId) query.set("company_id", companyId); fetch(`/api/dashboard?${query}`).then(async (response) => { const payload = await response.json(); if (!response.ok) throw new Error(payload.error ?? "Não foi possível carregar o resumo."); if (active) setData(payload.data); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [month, year, companyId]);
+  const years = Array.from({ length: 6 }, (_, index) => currentYear - index);
+  return <div className="mx-auto mt-3 w-full max-w-4xl space-y-3"><section className="rounded-2xl border border-border bg-surface p-3"><div className="grid grid-cols-[1.35fr_0.9fr] gap-2"><label><span className="mb-1 block text-[11px] font-medium text-muted">Mês</span><select aria-label="Mês do resumo" className="field" value={month} onChange={(event) => setMonth(Number(event.target.value))}>{months.map((label, index) => <option key={label} value={index + 1}>{label}</option>)}</select></label><label><span className="mb-1 block text-[11px] font-medium text-muted">Ano</span><select aria-label="Ano do resumo" className="field" value={year} onChange={(event) => setYear(Number(event.target.value))}>{years.map((value) => <option key={value} value={value}>{value}</option>)}</select></label></div></section>{loading && <div className="h-24 animate-pulse rounded-2xl bg-surface" />}{error && !loading && <div role="alert" className="rounded-2xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{error}</div>}{!loading && !error && data && <><section className="rounded-2xl border border-accent/30 bg-accent/10 p-4 shadow-soft"><div className="flex items-start justify-between"><div><p className="text-sm text-accent">Faturamento mensal</p><p className="mt-1 text-3xl font-semibold">{money(data.summary.revenue)}</p><p className="mt-1 text-[11px] text-muted">Pagamentos de {dateLabel(data.month.start)} a {dateLabel(data.month.end)}</p></div><ShoppingCart className="h-5 w-5 text-accent" /></div></section><div className="grid gap-3 sm:grid-cols-2"><section className="rounded-2xl border border-border bg-surface p-4"><p className="text-sm text-muted">Faturamento semanal</p><p className="mt-1 text-2xl font-semibold">{money(data.weeklySummary.revenue)}</p><p className="mt-1 text-[11px] text-muted">{dateLabel(data.week.start)} a {dateLabel(data.week.end)}</p></section><section className="rounded-2xl border border-border bg-surface p-4"><div className="flex items-center justify-between"><div><p className="text-sm text-muted">Lucro mensal</p><p className="mt-1 text-2xl font-semibold text-success">{money(data.summary.profit)}</p></div><ArrowUpRight className="h-5 w-5 text-success" /></div></section></div></>}{!loading && !error && <section className="grid grid-cols-2 gap-3"><SaleDialog onSaved={announceFinancialChange} trigger={<Button className="min-h-11 w-full"><Plus className="h-4 w-4" />Nova venda</Button>} /><ExpenseDialog onSaved={announceFinancialChange} trigger={<Button variant="outline" className="min-h-11 w-full"><CircleDollarSign className="h-4 w-4" />Novo gasto</Button>} /></section>}</div>;
+}
+
+export function SummaryView() {
+  return <><div className="mx-auto mt-3 w-full max-w-4xl"><SummaryProfitIndicator /></div><SummaryContent /></>;
+}

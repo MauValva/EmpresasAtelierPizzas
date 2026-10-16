@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!parsed.success) return NextResponse.json({ error: "Confira os campos do ingrediente.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   const values = parsed.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("inventory_items").update({ name: values.name, category: values.category?.trim() || null, unit: values.unit, minimum_quantity: values.minimum_quantity, notes: values.notes?.trim() || null }).eq("id", id).select("*").single();
+  const { data, error } = await supabase.from("inventory_items").update({ name: values.name, category: values.category?.trim() || null, unit: values.unit, company_scope: values.company_scope, minimum_quantity: values.minimum_quantity, is_active: values.is_active, notes: values.notes?.trim() || null }).eq("id", id).select("*").single();
   if (error || !data) return NextResponse.json({ error: "Não foi possível atualizar o ingrediente." }, { status: 500 });
   return NextResponse.json({ data });
 }

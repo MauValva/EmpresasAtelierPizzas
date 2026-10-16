@@ -1,5 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAccessState } from "@/lib/auth/access";
-import { cancelSaleSchema } from "@/lib/sales/schema";
 import { createClient } from "@/lib/supabase/server";
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); const { id } = await params; const parsed = cancelSaleSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Informe o motivo do cancelamento.", issues: parsed.error.flatten().fieldErrors }, { status: 400 }); const value = parsed.data; const supabase = await createClient(); const { data, error } = await supabase.rpc("cancel_sale", { p_sale_id: id, p_return_stock: value.return_stock, p_reason: value.reason, p_operation_key: value.operation_key ?? crypto.randomUUID() }); if (error) return NextResponse.json({ error: "Não foi possível cancelar o pedido." }, { status: 400 }); return NextResponse.json({ data }); }
+
+export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if ((await getAccessState()).status !== "authorized") return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
+  const { id } = await params;
+  const { data, error } = await (await createClient()).rpc("cancel_open_sale", { p_sale_id: id });
+  if (error) return NextResponse.json({ error: "Não foi possível cancelar o pedido.", code: error.code }, { status: 400 });
+  return NextResponse.json({ data });
+}

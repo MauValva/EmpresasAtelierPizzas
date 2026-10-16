@@ -2,7 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAccessState } from "@/lib/auth/access";
 import { productVariantSchema } from "@/lib/catalog/schema";
 import { createClient } from "@/lib/supabase/server";
-function denied() { return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); }
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return denied(); const { id } = await params; const supabase = await createClient(); const { data, error } = await supabase.from("products").select("*").eq("id", id).single(); if (error || !data) return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 }); const [variants, companies] = await Promise.all([supabase.from("product_variants").select("*").eq("product_id", id).order("name"), supabase.from("companies").select("id, name").eq("id", data.company_id).single()]); return NextResponse.json({ data: { ...data, company: companies.data, variants: variants.data ?? [] } }); }
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return denied(); const { id } = await params; const body = await request.json().catch(() => null) as { name?: string; category?: string; description?: string; is_active?: boolean } | null; if (!body?.name || body.name.trim().length < 2) return NextResponse.json({ error: "Nome do produto inválido." }, { status: 400 }); const supabase = await createClient(); const { data, error } = await supabase.from("products").update({ name: body.name.trim(), category: body.category?.trim() || null, description: body.description?.trim() || null, is_active: body.is_active ?? true }).eq("id", id).select("*").single(); if (error || !data) return NextResponse.json({ error: "Não foi possível atualizar o produto." }, { status: 400 }); return NextResponse.json({ data }); }
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) { const access = await getAccessState(); if (access.status !== "authorized") return denied(); const { id } = await params; const parsed = productVariantSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json({ error: "Confira os dados da variação.", issues: parsed.error.flatten().fieldErrors }, { status: 400 }); const value = parsed.data; const supabase = await createClient(); const { data, error } = await supabase.from("product_variants").insert({ product_id: id, name: value.name, sku: value.sku ?? null, target_weight_g: value.target_weight_g ?? null, price: value.price, recipe_version_id: value.recipe_version_id ?? null, recipe_scale: value.recipe_scale, is_active: value.is_active }).select("*").single(); if (error || !data) return NextResponse.json({ error: "Não foi possível salvar a variação." }, { status: 400 }); return NextResponse.json({ data }, { status: 201 }); }
+
+const denied = () => NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 });
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if ((await getAccessState()).status !== "authorized") return denied();
+  const { id } = await params;
+  const { data, error } = await (await createClient()).from("products").select("*, product_variants(*)").eq("id", id).single();
+  if (error || !data) return NextResponse.json({ error: "Produto não encontrado." }, { status: 404 });
+  return NextResponse.json({ data });
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if ((await getAccessState()).status !== "authorized") return denied();
+  const { id } = await params;
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (typeof body?.name !== "string" || body.name.trim().length < 2) return NextResponse.json({ error: "Nome inválido." }, { status: 400 });
+  const { data, error } = await (await createClient()).from("products").update({ name: body.name.trim(), category: typeof body.category === "string" ? body.category.trim() || null : null, description: typeof body.description === "string" ? body.description.trim() || null : null, is_active: body.is_active !== false }).eq("id", id).select("*").single();
+  if (error || !data) return NextResponse.json({ error: "Não foi possível atualizar o produto." }, { status: 400 });
+  return NextResponse.json({ data });
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if ((await getAccessState()).status !== "authorized") return denied();
+  const { id } = await params;
+  const parsed = productVariantSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Confira os dados da variação.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const value = parsed.data;
+  const { data, error } = await (await createClient()).from("product_variants").insert({ product_id: id, name: value.name, target_weight_g: value.target_weight_g ?? null, price: value.price, is_active: value.is_active }).select("*").single();
+  if (error || !data) return NextResponse.json({ error: "Não foi possível salvar a variação." }, { status: 400 });
+  return NextResponse.json({ data }, { status: 201 });
+}

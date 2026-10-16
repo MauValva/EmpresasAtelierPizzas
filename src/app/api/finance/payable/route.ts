@@ -1,4 +1,0 @@
-import { NextResponse } from "next/server";
-import { getAccessState } from "@/lib/auth/access";
-import { createClient } from "@/lib/supabase/server";
-export async function GET() { const access = await getAccessState(); if (access.status !== "authorized") return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); const supabase = await createClient(); const [purchases, expenses] = await Promise.all([supabase.from("purchases").select("id, supplier_id, company_id, purchase_date, total_amount, payment_status").neq("payment_status", "paid").neq("status", "cancelled"), supabase.from("expenses").select("id, company_id, description, due_date, amount, payment_status").neq("payment_status", "paid").neq("payment_status", "cancelled")]); return NextResponse.json({ data: { purchases: purchases.data ?? [], expenses: expenses.data ?? [] } }); }

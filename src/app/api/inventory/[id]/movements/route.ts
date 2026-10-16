@@ -25,9 +25,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const parsed = movementSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Confira os dados da movimentação.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   const values = parsed.data;
-  const operationKey = typeof body?.operation_key === "string" ? body.operation_key : crypto.randomUUID();
+  const operationKey = values.operation_key ?? crypto.randomUUID();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("register_inventory_movement", { p_inventory_item_id: id, p_movement_type: values.movement_type, p_quantity: values.quantity, p_unit_cost: values.unit_cost ?? null, p_reason: values.reason, p_operation_key: operationKey });
+  const rpcName = values.movement_type === "adjustment" ? "register_inventory_adjustment" : "register_inventory_movement";
+  const rpcParams = values.movement_type === "adjustment"
+    ? { p_inventory_item_id: id, p_target_quantity: values.quantity, p_unit_cost: values.unit_cost ?? null, p_operation_key: operationKey, p_reason: values.reason }
+    : { p_inventory_item_id: id, p_movement_type: values.movement_type, p_quantity: values.quantity, p_unit_cost: values.unit_cost ?? null, p_source_type: "manual", p_source_id: null, p_operation_key: operationKey, p_reason: values.reason };
+  const { data, error } = await supabase.rpc(rpcName, rpcParams);
   if (error) return NextResponse.json({ error: "Não foi possível registrar a movimentação." }, { status: 400 });
   return NextResponse.json({ data }, { status: 201 });
 }

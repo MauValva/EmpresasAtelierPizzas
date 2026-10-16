@@ -4,7 +4,7 @@ import { inventoryItemSchema } from "@/lib/inventory/schema";
 import { inventoryStatus } from "@/lib/inventory/rules";
 import { createClient } from "@/lib/supabase/server";
 
-const fields = "id, name, category, unit, current_quantity, average_unit_cost, minimum_quantity, is_active, notes, created_at, updated_at";
+const fields = "id, name, category, unit, company_scope, current_quantity, average_unit_cost, minimum_quantity, is_active, notes, created_at, updated_at";
 
 function denied() { return NextResponse.json({ error: "Acesso não autorizado." }, { status: 403 }); }
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Confira os campos do ingrediente.", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
   const values = parsed.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("inventory_items").insert({ name: values.name, category: values.category?.trim() || null, unit: values.unit, minimum_quantity: values.minimum_quantity, notes: values.notes?.trim() || null }).select(fields).single();
+  const { data, error } = await supabase.from("inventory_items").insert({ name: values.name, category: values.category?.trim() || null, unit: values.unit, company_scope: values.company_scope, minimum_quantity: values.minimum_quantity, is_active: values.is_active, notes: values.notes?.trim() || null }).select(fields).single();
   if (error) return NextResponse.json({ error: "Não foi possível salvar o ingrediente." }, { status: 500 });
   return NextResponse.json({ data }, { status: 201 });
 }
